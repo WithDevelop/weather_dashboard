@@ -1,6 +1,5 @@
 const LAT = 37.5665;
 const LON = 126.9780;
-const API_URL = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FTokyo`;
 
 const WEATHER_CODES = {
     0: { label: 'Clear', icon: 'ph-sun', color: 'text-yellow-400' },
@@ -45,7 +44,26 @@ function formatDayName(dateStr) {
     return date.toLocaleDateString('en-US', options);
 }
 
-async function fetchWeather() {
+async function updateCityName(lat, lon) {
+    try {
+        const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
+        const data = await response.json();
+        const city = data.city || data.locality || "Current Location";
+        const country = data.countryName || "Unknown Country";
+        document.getElementById('city-name').innerText = city;
+        
+        // update the country part in current-date (we'll store it as dataset or just replace)
+        const dateEl = document.getElementById('current-date');
+        const currentDateText = dateEl.innerText.split('•')[1]?.trim() || 'Loading...';
+        dateEl.innerText = `${country} • ${currentDateText}`;
+    } catch (err) {
+        console.error("Reverse geocoding failed", err);
+        document.getElementById('city-name').innerText = "현재 위치";
+    }
+}
+
+async function fetchWeather(lat = LAT, lon = LON) {
+    const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto`;
     const errorState = document.getElementById('error-state');
     const weatherContent = document.getElementById('weather-content');
     const forecastContent = document.getElementById('forecast-content');
@@ -57,7 +75,7 @@ async function fetchWeather() {
     document.getElementById('current-condition').innerText = 'Loading...';
 
     try {
-        const response = await fetch(API_URL);
+        const response = await fetch(apiUrl);
         if (!response.ok) {
             throw new Error(`API Error: ${response.status} ${response.statusText}`);
         }
@@ -85,7 +103,10 @@ async function fetchWeather() {
             todayStr = formatDate(data.daily.time[0]);
             todayStr = todayStr.split(',')[1]?.trim() || todayStr;
         }
-        document.getElementById('current-date').innerText = `South Korea • Today, ${todayStr}`;
+        
+        const dateEl = document.getElementById('current-date');
+        const countryPart = dateEl.innerText.split('•')[0]?.trim() || 'South Korea';
+        dateEl.innerText = `${countryPart} • Today, ${todayStr}`;
         
         // Update Indicators
         const feelsLike = current.apparent_temperature !== undefined ? Math.round(current.apparent_temperature) : '--';
@@ -152,4 +173,30 @@ async function fetchWeather() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', fetchWeather);
+document.addEventListener('DOMContentLoaded', () => {
+    fetchWeather();
+    
+    const currentLocationBtn = document.getElementById('current-location-btn');
+    if (currentLocationBtn) {
+        currentLocationBtn.addEventListener('click', () => {
+            if (navigator.geolocation) {
+                // UI feedback
+                currentLocationBtn.classList.add('opacity-50');
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        const { latitude, longitude } = position.coords;
+                        await fetchWeather(latitude, longitude);
+                        await updateCityName(latitude, longitude);
+                        currentLocationBtn.classList.remove('opacity-50');
+                    },
+                    (error) => {
+                        currentLocationBtn.classList.remove('opacity-50');
+                        alert("위치 정보를 가져올 수 없습니다: " + error.message);
+                    }
+                );
+            } else {
+                alert("이 브라우저에서는 Geolocation이 지원되지 않습니다.");
+            }
+        });
+    }
+});
