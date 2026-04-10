@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clean & Modern Weather Dashboard</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Phosphor Icons for elegant minimalist icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Inter Font for modern typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        /* Glassmorphism utility */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+        }
+        /* Subtle entrance animation */
+        .fade-in {
+            animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex items-center justify-center p-4 sm:p-8 selection:bg-blue-100">
+
+    <!-- Dashboard Container -->
+    <main class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-6 fade-in">
+        
+        <!-- Error State (Hidden by default) -->
+        <div id="error-state" class="hidden col-span-1 lg:col-span-3 glass-panel rounded-[2rem] p-8 text-center flex flex-col items-center justify-center min-h-[400px]">
+            <i class="ph ph-warning-circle text-red-500 text-6xl mb-4"></i>
+            <h2 class="text-2xl font-bold text-slate-800 mb-2">Failed to load weather data</h2>
+            <p id="error-message" class="text-slate-500 mb-6">Please try again later.</p>
+            <button onclick="fetchWeather()" class="px-6 py-2 bg-blue-500 text-white rounded-full font-medium hover:bg-blue-600 transition-colors">Retry</button>
+        </div>
+
+        <!-- Left Column: Current Weather & Detailed Indicators -->
+        <div id="weather-content" class="lg:col-span-2 flex flex-col gap-6">
+            
+            <!-- Current Weather Card (US01 반영) -->
+            <section class="glass-panel rounded-[2rem] p-8 sm:p-10 flex flex-col justify-between h-[360px] relative overflow-hidden transition-transform duration-500 hover:shadow-xl">
+                <!-- Abstract Background Elements for Visual Polish -->
+                <div class="absolute -top-32 -right-32 w-80 h-80 bg-yellow-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+                <div class="absolute -bottom-32 -left-32 w-80 h-80 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
+                
+                <!-- Location & Date -->
+                <div class="z-10 flex justify-between items-start">
+                    <div>
+                        <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">Seoul</h1>
+                        <p id="current-date" class="text-slate-500 font-medium mt-1">South Korea • Loading...</p>
+                    </div>
+                    <div class="bg-white/80 px-4 py-2 rounded-full flex items-center gap-2 text-sm font-semibold shadow-sm text-slate-700 backdrop-blur-md">
+                        <i class="ph-fill ph-navigation-arrow text-blue-500"></i> Current Location
+                    </div>
+                </div>
+
+                <!-- Temperature & Condition -->
+                <div class="z-10 flex items-end justify-between">
+                    <div class="flex flex-col">
+                        <div id="current-temp" class="text-[6rem] sm:text-[8rem] font-bold leading-none tracking-tighter text-slate-900 mb-2">--°</div>
+                        <div id="current-condition" class="text-2xl sm:text-3xl font-medium text-slate-600">Loading</div>
+                    </div>
+                    <!-- Weather Icon (Clear) -->
+                    <div id="current-icon" class="text-yellow-400 text-[6rem] sm:text-[8rem] drop-shadow-lg pb-4 sm:pb-6 transition-transform duration-700 hover:rotate-12 hover:scale-105">
+                        <i class="ph-fill ph-sun"></i>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Detailed Indicators Grid (US03 반영) -->
+            <section class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <!-- Feels Like -->
+                <div class="glass-panel rounded-3xl p-6 flex flex-col items-center justify-center text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-default group">
+                    <i class="ph ph-thermometer text-3xl text-orange-500 mb-3 group-hover:scale-110 transition-transform"></i>
+                    <p class="text-sm text-slate-500 font-medium">Feels Like</p>
+                    <p id="feels-like" class="text-2xl font-bold mt-1 text-slate-800">--°</p>
+                </div>
+                <!-- Precipitation -->
+                <div class="glass-panel rounded-3xl p-6 flex flex-col items-center justify-center text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-default group">
+                    <i class="ph ph-drop text-3xl text-blue-500 mb-3 group-hover:scale-110 transition-transform"></i>
+                    <p class="text-sm text-slate-500 font-medium">Precipitation</p>
+                    <p id="precipitation" class="text-2xl font-bold mt-1 text-slate-800">--%</p>
+                </div>
+                <!-- Humidity -->
+                <div class="glass-panel rounded-3xl p-6 flex flex-col items-center justify-center text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-default group">
+                    <i class="ph ph-waves text-3xl text-teal-500 mb-3 group-hover:scale-110 transition-transform"></i>
+                    <p class="text-sm text-slate-500 font-medium">Humidity</p>
+                    <p id="humidity" class="text-2xl font-bold mt-1 text-slate-800">--%</p>
+                </div>
+                <!-- Wind Speed -->
+                <div class="glass-panel rounded-3xl p-6 flex flex-col items-center justify-center text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-default group">
+                    <i class="ph ph-wind text-3xl text-indigo-500 mb-3 group-hover:scale-110 transition-transform"></i>
+                    <p class="text-sm text-slate-500 font-medium">Wind Speed</p>
+                    <p id="wind-speed" class="text-2xl font-bold mt-1 text-slate-800">-- m/s</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- Right Column: Weekly Forecast (US02 반영) -->
+        <div id="forecast-content" class="lg:col-span-1">
+            <section class="glass-panel rounded-[2rem] p-8 h-full flex flex-col hover:shadow-xl transition-shadow duration-500">
+                <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-slate-800">
+                    <i class="ph ph-calendar-blank text-slate-500 text-2xl"></i> 7-Day Forecast
+                </h2>
+                
+                <div id="forecast-container" class="flex-1 flex flex-col justify-between gap-5">
+                    <!-- Day 1 (Today) -->
+                    <div class="flex items-center justify-between border-b border-slate-200/60 pb-3">
+                        <span class="text-slate-500 font-semibold w-12">Today</span>
+                        <div class="flex items-center gap-2 text-yellow-400 text-2xl w-16 justify-center">
+                            <i class="ph-fill ph-sun"></i>
+                        </div>
+                        <div class="flex items-center gap-4 font-bold w-24 justify-end">
+                            <span class="text-slate-900">22°</span>
+                            <span class="text-slate-400">14°</span>
+                        </div>
+                    </div>
+                    <!-- Day 2 -->
+                    <div class="flex items-center justify-between border-b border-slate-200/60 pb-3">
+                        <span class="text-slate-500 font-medium w-12">Fri</span>
+                        <div class="flex items-center gap-2 text-yellow-400 text-2xl w-16 justify-center">
+                            <i class="ph-fill ph-sun"></i>
+                        </div>
+                        <div class="flex items-center gap-4 font-bold w-24 justify-end">
+                            <span class="text-slate-900">24°</span>
+                            <span class="text-slate-400">15°</span>
+                        </div>
+                    </div>
+                    <!-- Day 3 -->
+                    <div class="flex items-center justify-between border-b border-slate-200/60 pb-3">
+                        <span class="text-slate-500 font-medium w-12">Sat</span>
+                        <div class="flex items-center gap-2 text-slate-400 text-2xl w-16 justify-center">
+                            <i class="ph-fill ph-cloud"></i>
+                        </div>
+                        <div class="flex items-center gap-4 font-bold w-24 justify-end">
+                            <span class="text-slate-900">20°</span>
+                            <span class="text-slate-400">13°</span>
+                        </div>
+                    </div>
+                    <!-- Day 4 -->
+                    <div class="flex items-center justify-between border-b border-slate-200/60 pb-3">
+                        <span class="text-slate-500 font-medium w-12">Sun</span>
+                        <div class="flex items-center gap-2 text-blue-500 text-2xl w-16 justify-center">
+                            <i class="ph-fill ph-cloud-rain"></i>
+                        </div>
+                        <div class="flex items-center gap-4 font-bold w-24 justify-end">
+                            <span class="text-slate-900">18°</span>
+                            <span class="text-slate-400">12°</span>
+                        </div>
+                    </div>
+                    <!-- Day 5 -->
+                    <div class="flex items-center justify-between border-b border-slate-200/60 pb-3">
+                        <span class="text-slate-500 font-medium w-12">Mon</span>
+                        <div class="flex items-center gap-2 text-slate-400 text-2xl w-16 justify-center">
+                            <i class="ph-fill ph-cloud-sun"></i>
+                        </div>
+                        <div class="flex items-center gap-4 font-bold w-24 justify-end">
+                            <span class="text-slate-900">19°</span>
+                            <span class="text-slate-400">11°</span>
+                        </div>
+                    </div>
+                    <!-- Day 6 -->
+                    <div class="flex items-center justify-between border-b border-slate-200/60 pb-3">
+                        <span class="text-slate-500 font-medium w-12">Tue</span>
+                        <div class="flex items-center gap-2 text-yellow-400 text-2xl w-16 justify-center">
+                            <i class="ph-fill ph-sun"></i>
+                        </div>
+                        <div class="flex items-center gap-4 font-bold w-24 justify-end">
+                            <span class="text-slate-900">21°</span>
+                            <span class="text-slate-400">13°</span>
+                        </div>
+                    </div>
+                    <!-- Day 7 -->
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-500 font-medium w-12">Wed</span>
+                        <div class="flex items-center gap-2 text-yellow-400 text-2xl w-16 justify-center">
+                            <i class="ph-fill ph-sun"></i>
+                        </div>
+                        <div class="flex items-center gap-4 font-bold w-24 justify-end">
+                            <span class="text-slate-900">23°</span>
+                            <span class="text-slate-400">14°</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        
+    </main>
+    <script src="app.js"></script>
+</body>
+</html>
